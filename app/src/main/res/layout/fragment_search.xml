@@ -22,7 +22,7 @@
     <EditText
         android:id="@+id/searchEdit"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="60dp"
         android:hint="Search news..."
         android:layout_marginTop="70dp"
         android:layout_marginEnd="8dp"

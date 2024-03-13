@@ -40,68 +40,69 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding = FragmentSearchBinding.bind(view)
-
         itemSearchError = view.findViewById(R.id.itemSearchError)
-
-        val inflater = requireContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-        val view: View = inflater.inflate(R.layout.item_error, null)
         retryButton = view.findViewById(R.id.retryButton)
         errorText = view.findViewById(R.id.errorText)
 
         newsViewModel = (activity as NewsActivity).newsViewModel
         setupSearchRecycler()
 
-        newsAdapter.setOnItemClickListener {
-            val bundle = Bundle().apply {
-                putSerializable("article", it)
+        retryButton.setOnClickListener {
+            if (binding.searchEdit.text.toString().isNotEmpty()) {
+                newsViewModel.searchNews(binding.searchEdit.text.toString())
+            } else {
+                hideErrorMessage()
             }
-            findNavController().navigate(
-                R.id.action_searchFragment_to_articleFragment,
-                bundle
-            )
+        }
 
-            var job: Job? = null
-            binding.searchEdit.addTextChangedListener(){ editable ->
-                job?.cancel()
-                job = MainScope().launch {
-                    delay(Constants.SEARCH_NEWS_TIME_DELAY)
-                    editable?.let {
-                        if(editable.toString().isNotEmpty()){
-                            newsViewModel.searchNews(editable.toString())
-                        }
+        var job: Job? = null
+        binding.searchEdit.addTextChangedListener { editable ->
+            job?.cancel()
+            job = MainScope().launch {
+                delay(Constants.SEARCH_NEWS_TIME_DELAY)
+                editable?.let {
+                    if (editable.toString().isNotEmpty()) {
+                        newsViewModel.searchNews(editable.toString())
                     }
                 }
             }
         }
 
+        newsAdapter.setOnItemClickListener { article ->
+            val bundle = Bundle().apply {
+                putSerializable("article", article)
+            }
+            findNavController().navigate(R.id.action_searchFragment_to_articleFragment, bundle)
+        }
+
         newsViewModel.searchNews.observe(viewLifecycleOwner, Observer { response ->
-            when(response){
-                is Resource.Success<*> -> {
+            when (response) {
+                is Resource.Success -> {
                     hideProgressBar()
                     hideErrorMessage()
-                    response.data?.let {newsResponse ->
+                    response.data?.let { newsResponse ->
                         newsAdapter.differ.submitList(newsResponse.articles.toList())
                         val totalPages = newsResponse.totalResults / Constants.QUERY_PAGE_SIZE + 2
                         isLastPage = newsViewModel.searchNewsPage == totalPages
-                        if(isLastPage){
+                        if (isLastPage) {
                             binding.recyclerSearch.setPadding(0, 0, 0, 0)
                         }
                     }
                 }
-                is Resource.Error<*> -> {
+                is Resource.Error -> {
                     hideProgressBar()
                     response.message?.let { message ->
-                        Toast.makeText(activity,"Sorry error occurred: $message", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, "Sorry error occurred: $message", Toast.LENGTH_LONG).show()
                         showErrorMessage(message)
                     }
                 }
-                is Resource.Loading<*> -> {
+                is Resource.Loading -> {
                     showProgressBar()
                 }
             }
         })
 
-        retryButton.setOnClickListener {
+    retryButton.setOnClickListener {
             if(binding.searchEdit.text.toString().isNotEmpty()){
                 newsViewModel.searchNews(binding.searchEdit.text.toString())
             } else {
